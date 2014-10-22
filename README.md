@@ -8,7 +8,7 @@ WORK IN PROGRESS
 
 ###Installing
 
-With **devtools** (accessible from CRAN) **LDna** can be installed by:
+With **devtools** (accessible from CRAN) **MODEST** can be installed by:
 ```r
 devtools::install_github("petrikemppainen/MODEST")
 ```

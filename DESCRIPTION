@@ -1,9 +1,13 @@
 Package: MODEST
 Type: Package
-Title: Integrates results across replicated STRUCTURE runs spanning a large rang of K values
+Title: Integrates results across replicated STRUCTURE runs spanning a large
+    rang of K values
 Version: 0.5
 Date: 2014-10-22
 Author: Stuart Baird, Petri Kemppainen, Sofie, Benny
 Maintainer: <petrikemppainen2@gmail.com>
-Description: More about what it does (maybe more than one line)
-License: GNU
+Description: To be added
+License: GPL (>= 2)
+depends: R (>= 3.0.2), ape, igraph
+Suggests:
+    knitr
