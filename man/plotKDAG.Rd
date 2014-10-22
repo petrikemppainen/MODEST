@@ -10,9 +10,6 @@ plotKDAG(KDAG, ...)
 
   \item{...}{Additional graphical parameters to be passed
   on the the plot.igraph functions}
-
-  \item{K}{A vector of K's for each Qcolumn in
-  \code{Qcols}}
 }
 \description{
 Plots output from \code{\link{Qcols2KDAG}}
