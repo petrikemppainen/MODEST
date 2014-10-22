@@ -27,6 +27,10 @@ plotKDAG <- function(KDAG, ...){
   E(DC)$color <- "black"
   E(DC)$lty <- 1
   
-  lay2 <- layout.sugiyama(DC, attributes="all", maxiter = 1000, hgap=1)
+  lay2 <- layout.sugiyama(DC, attributes="all", maxiter = 1000, hgap=10, vgap=)
   plot(DC, layout=lay2$layout, vertex.label.color="black", edge.arrow.size=0.1, edge.label.family="Helvetica", edge.label.color="black", ...)
 }
+
+
+
+?layout.sugiyama

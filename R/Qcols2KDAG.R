@@ -131,9 +131,11 @@ mergeDAG <- function(DAG, K){
             }else{
               if(trees[[k]]$Nnode+trees[[h]]$Nnode==2){
                 if(length(trees[[k]]$tip.label)==length(trees[[h]]$tip.label)){
-                  d.tree[k,h] <- 0  
+                    d.tree[k,h] <- 0
                 }else{
-                  d.tree[k,h] <- 1
+                #  if(singleNodeComparable==TRUE){
+                    d.tree[k,h] <- 1
+                #  }else{d.tree[k,h] <- 1}
                 }
               }
               if(trees[[k]]$Nnode+trees[[h]]$Nnode==3) d.tree[k,h] <- 1  
@@ -150,7 +152,7 @@ mergeDAG <- function(DAG, K){
         #find clusters of the same topology, here I use networks
         d.tree[d.tree!=0] <- -1
         d.tree[d.tree==0] <- 1
-        g <- graph.adjacency(d.tree, mode="lower", diag=FALSE, weighted=T)
+        g <- graph.adjacency(d.tree, mode="lower", diag=FALSE, weighted=TRUE)
         g <- delete.edges(g, which(E(g)$weight==-1))
         temp2 <- lapply(decompose.graph(g), function(x) V(x)$name)
         #
