@@ -8,6 +8,12 @@ Author: Stuart Baird, Petri Kemppainen, Sofie, Benny
 Maintainer: <petrikemppainen2@gmail.com>
 Description: To be added
 License: GPL (>= 2)
-depends: R (>= 3.0.2), ape, igraph
+Depends:
+    R (>= 3.0.2),
+    ape,
+    igraph,
+    multicore,
+    Deducer,
+    gtools
 Suggests:
     knitr

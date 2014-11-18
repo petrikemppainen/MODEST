@@ -1,25 +1,40 @@
-#' Parses STRUCTURE output to a K-directed acyclig graph (K-DAG)
+#' Parses STRUCTURE output to a K-directed acyclig graph (KDAG)
 #' 
-#' Takes a matrix of concatenated Qcolumns from mutltiple STRUCTURE runs and transforms these into a K-DAG
+#' Producdes a KDAG from  on single linkage clustering tree based on a pairwise matrix of distances between Q-columns (produced by \code{\link{getQdist}}).
 #' 
 #' More info to come
 #' 
-#' @param Qcols A matrix of concatenated Qcols from replicate STRUCTURE runs across many K values
+#' @param Qdist A matrix of pairwise distanances between Q-columns produced by \code{\link{getQdist}}
 #' @param K A vector of K's for each Qcolumn in \code{Qcols}
-#' @return returns a list with two objects, \code{KDAG} which contains an edgelist containing the informatino of the K-directed acyclig graph and \code{toMerge}, which contains a list of nodes from \code{KDAG} and which Qcolumns they represent.
+#' @param merge.by Weather to merge by topology or by Qdist
+#' @param threshold If `merge.by="Qdist"`, threshold gives the minimum value for the distance below which Q-columns are merged expressed as fraction of the maximum distance in the data set (default=0.05).
+#' @return returns an edge list representing the KDAG
 #' @export
-#' @keywords Qcols2DAG
+#' @keywords Qdist2KDAG, getQdist
 #' @author Petri Kemppainen, \email{petrikemppainen2@@gmail.com} and Stuart Baird, \email{stuartj.e.baird@@gmail.com}
+#' @examples
+#' data(MODEST)
+#' KDAG <- Qdist2KDAG(Qdist_MCMV, modest_MCMV$K, merge.by="Qdist")
 
-Qcols2KDAG <- function(Qcols, K){
-  mergeDAG(Qcols2KDAG_inner(Qcols, K), K)
+
+Qdist2KDAG <- function(Qdist, K, merge.by="topology", threshold=0.05){
+  if(merge.by=="topology"){
+    out <- mergeDAG_top(Qdist2KDAG_inner(Qdist, K), K)
+  }
+  if(merge.by=="Qdist"){
+    out <- mergeDAG_Qdist(Qdist2KDAG_inner(Qdist, K), Qdist, K, threshold=threshold)
+  }
+  out
 } 
 
-Qcols2KDAG_inner <- function(Qcols, K){ # the imputs for this function are a matrix of Qcols and a vector of K for each Qcolumn
+Qdist2KDAG_inner <- function(Qdist, K){ # the imputs for this function are a matrix of Qcols and a vector of K for each Qcolumn
   ### prepare slink
-  colnames(Qcols) <- c(1:ncol(Qcols))
-  correlations <- cor(Qcols, method="pearson") # calculate correlations
-  slink <- as.phylo(hclust(as.dist(1-correlations), method="single")) # get slink from distance matrix and parse it to a 'phylo' object
+  if(is.na(Qdist[2,1])){
+    Qdist <- t(Qdist)
+  }
+  
+  slink <- as.phylo(hclust(as.dist(Qdist), method="single")) # get slink from distance matrix and parse it to a 'phylo' object
+  
   ### prepare some useful info 
   Ntips <- length(slink$tip.label) # number of tips
   Nclust <- slink$Nnode # number of clusters
@@ -94,15 +109,15 @@ Qcols2KDAG_inner <- function(Qcols, K){ # the imputs for this function are a mat
   return(DAG)
 }
 ##################
-mergeDAG <- function(DAG, K){
+mergeDAG_top <- function(DAG, K){
   #start with root
-  out <- list()
-  out[[1]] <- list(0)
-  names(out[[1]][[1]]) <- "root"
+  temp <- list()
+  temp[[1]] <- list(0)
+  names(temp[[1]][[1]]) <- "root"
   currentK <- 1
   MDAG <- matrix(NA, 0, 2)
   while((currentK)<max(K)){
-    parents <- out[[currentK]]
+    parents <- temp
     currentK <- currentK+1
     temp <- list()
     x <- 0
@@ -131,11 +146,11 @@ mergeDAG <- function(DAG, K){
             }else{
               if(trees[[k]]$Nnode+trees[[h]]$Nnode==2){
                 if(length(trees[[k]]$tip.label)==length(trees[[h]]$tip.label)){
-                    d.tree[k,h] <- 0
+                  d.tree[k,h] <- 0
                 }else{
-                #  if(singleNodeComparable==TRUE){
-                    d.tree[k,h] <- 1
-                #  }else{d.tree[k,h] <- 1}
+                  #  if(singleNodeComparable==TRUE){
+                  d.tree[k,h] <- 1
+                  #  }else{d.tree[k,h] <- 1}
                 }
               }
               if(trees[[k]]$Nnode+trees[[h]]$Nnode==3) d.tree[k,h] <- 1  
@@ -179,12 +194,92 @@ mergeDAG <- function(DAG, K){
         #find which columns should be merged and build merged DAG
       }
     }
-    duplicated(temp)
-    out[[currentK]] <- temp
+    temp
   }
-  out <- list(out, MDAG)
-  names(out) <- c("toMerge", "KDAG")
-  out
+  out <- apply(MDAG, 2, function(y){
+    temp <- lapply(strsplit(y, ","), as.numeric)
+    temp <- lapply(temp, function(x) if(!all(x<0)) {x[x>=0]}else{-1})
+    temp[sapply(temp, function(x) any(x<0))] <- 1:length(which(sapply(temp, function(x) any(x<0))))*-1
+    temp <- sapply(temp, function(x) paste(sort(x), collapse=","))  
+  })  
+}
+##################
+mergeDAG_Qdist <- function(DAG, Qdist, K, threshold=0.05){
+  if(is.na(Qdist[1,2])){
+    Qdist <- t(Qdist)
+  }
+  Qdist[1:5, 1:5]
+  G_clusters <- list()
+  for(i in unique(K)){
+    G_K <- Qdist[K==i, K==i]
+    g <- graph.adjacency(G_K, mode="upper", diag=FALSE, weighted=TRUE)          
+    g <- delete.edges(g, which(E(g)$weight>threshold))
+    G_clusters[[i]] <- lapply(decompose.graph(g), function(x) V(x)$name)  
+  }
+  
+  #start with root
+  new.parents <- list(0)
+  names(new.parents[[1]]) <- "root"
+  currentK <- 1
+  MDAG <- matrix(NA, 0, 2)
+  Eindex <- 0
+  while((currentK)<max(K)){
+    parents <- unique(new.parents)
+    new.parents <- list()
+    currentK <- currentK+1
+    #i <- 1
+    #collapse nodes with comparable topologies and build merged DAG
+    for(i in 1:length(parents)){
+      if(any(DAG[,1] %in% unlist(parents[[i]])) && any(unique(DAG[,2][DAG[,1] %in% unlist(parents[[i]])])>0)){
+        from <- paste(sort(as.numeric(unlist(parents[[i]]))), collapse=",")
+        children <- unique(DAG[,2][DAG[,1] %in% unlist(parents[[i]])])
+        vertices <- G_clusters[[currentK]][sapply(G_clusters[[currentK]], function(x) any(x %in% children))]
+        for(j in 1:length(vertices)){
+          to <- paste(sort(as.numeric(unlist(vertices[j]))), collapse=",")
+          MDAG <- rbind(MDAG, c(from, to))
+          new.parents <- c(new.parents, vertices[j])
+        }
+      }
+    }
+    hanging <- G_clusters[[currentK]][!sapply(G_clusters[[currentK]], function(x) any(x %in% unlist(new.parents)))]
+    if(length(hanging)>0){
+      ## build in hanging vertices
+      for(k in 1:length(hanging)){
+        vertices <- hanging[[k]]
+        vertices <- unique(DAG[,1][DAG[,2] %in% vertices])
+        while(all(vertices<0)){
+          vertices <- unique(DAG[,1][DAG[,2] %in% vertices])
+        }
+        vertices <- as.character(vertices)
+        from <- strsplit(unique(as.vector(MDAG)), ",")
+        from <- from[sapply(from, function(x) any(x %in% vertices))]
+        Kfrom <- unique(K[as.numeric(unlist(from))])
+        from <- lapply(from, function(x) paste(sort(as.numeric(unlist(x))), collapse=","))
+        Kto <- unique(K[as.numeric(hanging[[k]])])
+        to <- paste(hanging[[k]], collapse=",")
+        
+        DAG.temp <- matrix(NA, 0, 2) # file to append to
+        for(j in 1:length(from)){
+          if(diff(c(Kfrom, Kto))==1){ # if delta K ==1
+            DAG.temp <- rbind(DAG.temp, c(from[[j]], to))
+          }else{ # if delta K >1 create necessary empty vertices
+            Eindex <- Eindex-1
+            DAG.temp <- rbind(DAG.temp, c(Eindex, to))
+            if(diff(c(Kfrom, Kto))>2){
+              for(i in 1:(diff(c(Kfrom, Kto))-2)){
+                DAG.temp <- rbind(c(Eindex-1, Eindex), DAG.temp)
+                Eindex <- Eindex-1                
+              }
+            }
+            DAG.temp <- rbind(c(from[[j]], Eindex), DAG.temp)
+          }
+        }  
+        MDAG <- rbind(MDAG, DAG.temp)
+        new.parents <- c(new.parents, hanging[k])
+      }
+    }    
+  }
+  MDAG
 }
 ############## Functions
 extractDAG <- function(DAG, node){
@@ -213,6 +308,7 @@ DAG2Phylo <- function(DAG){
   tree <- list()
   tree$edge <- apply(el.new, 2, as.numeric)
   tree$tip.label <- tips
+  tree$node.label <- nodes
   tree$Nnode <- nNodes
   class(tree) <- "phylo"
   tree
@@ -241,3 +337,4 @@ collapseSinglesEl <- function(el){
   }
 }
 ############
+

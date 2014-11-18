@@ -1,0 +1,7 @@
+The importnant code is now in the following files:
+plotDAG.R (current plotDAG function)
+Qdist2DAG.R (getting DAG from Qdist)
+importData.R (importing data)
+getQdist.R (calculate Qdist from data prepared by importData)
+example_code (some example code)
+#########

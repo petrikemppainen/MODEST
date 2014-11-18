@@ -1,6 +1,6 @@
 #' MODEST
 #'
-#' MODEST integrates results across replicated STRUCTURE runs spanning a large rang of K values and therefore takes into account multimodality of data. change
+#' MODEST integrates results across replicated STRUCTURE runs spanning a large range of K values and takes into account multimodality of the data.
 #' 
 #' More info to come
 #' 
